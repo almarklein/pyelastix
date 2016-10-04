@@ -73,19 +73,6 @@ import subprocess
 import numpy as np
 
 
-# Try importing Aarray class from different sources
-try:
-    from pypoints import Aarray
-except ImportError:
-    try:
-        from pirt import Aarray
-    except ImportError:
-        try:
-            from visvis import Aarray
-        except ImportError:
-            Aarray = None
-
-
 # %% Code for determining whether a pid is active
 # taken from: http://www.madebuild.org/blog/?p=30
 
@@ -742,7 +729,7 @@ def _read_image_data( mhd_file):
     if dtype is None:
         raise RuntimeError('Unknown ElementType: ' + dtype_itk)
     
-    # Create numpy array, try making Aarray
+    # Create numpy array
     a = np.frombuffer(data, dtype=dtype)
     
     # Determine shape, sampling and origin of the data
@@ -774,12 +761,19 @@ def _read_image_data( mhd_file):
         raise RuntimeError('Cannot apply shape to data.')
     else:
         a.shape = shape
-        if Aarray:
-            a = Aarray(a, sampling, origin)
-    
-    # Done
+        a = Image(a)
+        a.sampling = sampling
+        a.origin = origin
     return a
 
+class Image(np.ndarray):
+    def __new__(cls, array):
+        try:
+            ob = array.view(cls)
+        except AttributeError:  # pragma: no cover
+            # Just return the original; no metadata on the array in Pypy!
+            return array
+        return ob
 
 
 # %% Code related to parameters
