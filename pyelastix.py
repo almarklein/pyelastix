@@ -1,62 +1,13 @@
-#   Copyright (c) 2010-216, Almar Klein
-#   This code is subject to the MIT license
+# Copyright (c) 2010-2016, Almar Klein
+# This code is subject to the MIT license
 
 """
-Python wrapper for the Elastix nonrigid registratuon toolkit.
+PyElastix - Python wrapper for the Elastix nonrigid registration toolkit
 
-
-Introduction
-------------
-
-Wraps the Elastix registration toolkit. The Elastix command line
-application needs to be installed on your computer. You can obtain
-a copy at [http://elastix.isi.uu.nl/].
-
-The implementation in this module is written to depend on as little
-packages as possible. In the pirt package, this class is wrapped to 
-provide an interface that's easier to use and fits in the pirt 
-framework.
-
-
-Elastix executables
--------------------
-
-On initialization, this module tries to detect the Elastix and 
-transformix executables on your computer. If this fails, it will
-simply use the executable names, which will work if these are on
-your PATH. 
-
-You can also set the full path of the executables using get_elastix_exes().
-
-
-Example
--------
-
-# Create Elastix instance
-from elastix import Elastix
-reg = Elastix()
-
-# Get params and change a few values
-params = reg.get_default_params('bspline')
-params.MaximumNumberOfIterations = 200
-params.FinalGridSpacingInVoxels = 10
-
-# Apply the registration (im1 and im2 can be 2D or 3D)
-im1_deformed, field = reg.register(im1, im2, params)
-
-# field is a tuple with arrays describing the deformation for each
-# dimension (x-y-z order).
-
-
-Copyright
----------
-
-This module is distributed under the (new) BSD license.
-Copyright (C) 2010, Almar Klein. 
-
-(Just to be clear, I am not one of the main authors of Elastix; that is
-Stefan Klein)
-
+This Python module wraps the Elastix registration toolkit. For it to
+work, the Elastix command line application needs to be installed on
+your computer. You can obtain a copy at http://elastix.isi.uu.nl/.
+Further, this module depends on numpy.
 """
 
 from __future__ import print_function, division 
