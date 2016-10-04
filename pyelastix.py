@@ -824,9 +824,8 @@ def get_default_params(type='BSPLINE'):
     most common parameters:
     
     * Transform (str):
-        {'BSplineTransform', 'EulerTransform', 'AffineTransform'} The
-        transformation to apply. Chosen by the argument of
-        get_default_params.
+        Can be 'BSplineTransform', 'EulerTransform', or
+        'AffineTransform'. The transformation to apply. Chosen based on `type`.
     * FinalGridSpacingInPhysicalUnits (int):
         When using the BSplineTransform, the final spacing of the grid.
         This controls the smoothness of the final deformation.

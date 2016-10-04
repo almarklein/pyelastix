@@ -18,9 +18,9 @@ for name in sorted(dir(pyelastix)):
     doc = '    ' + ob.__doc__.lstrip()
     doc = '\n'.join(line[4:] for line in doc.splitlines())
     if doc.startswith(name):
-        text += '### ' + doc
+        text += '### `' + doc.split('\n', 1)[0] + '`\n' + doc.split('\n', 1)[1]
     else:
-        text += '### ' + name + '()\n\n' + doc
+        text += '### `' + name + '()`\n\n' + doc
     text += '\n\n'
 
 

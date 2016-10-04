@@ -30,7 +30,7 @@ toolkit.
 ## Example
 
 ```py
-# Given im1 and im2 images stored as numpy arrays
+# Given im1 and im2 images stored as numpy arrays ...
 
 import pyelastix
 
@@ -49,7 +49,7 @@ See `example.py` for a more complete example.
 
 ----
 
-### Parameters()
+### `Parameters()`
 
 Struct object to represent the parameters for the Elastix
 registration toolkit. Sets of parameters can be combined by
@@ -60,13 +60,13 @@ Use `get_default_params()` to get a Parameters struct with sensible
 default values.
 
 
-### get_advanced_params()
+### `get_advanced_params()`
 
 Get `Parameters` struct with parameters that most users do not
 want to think about.
 
 
-### get_default_params(type='BSPLINE')
+### `get_default_params(type='BSPLINE')`
 
 Get `Parameters` struct with parameters that users may want to tweak.
 The given `type` specifies the type of allowed transform, and can
@@ -77,9 +77,8 @@ we refer to the Elastix documentation. Here is a description of the
 most common parameters:
 
 * Transform (str):
-    {'BSplineTransform', 'EulerTransform', 'AffineTransform'} The
-    transformation to apply. Chosen by the argument of
-    get_default_params.
+    Can be 'BSplineTransform', 'EulerTransform', or
+    'AffineTransform'. The transformation to apply. Chosen based on `type`.
 * FinalGridSpacingInPhysicalUnits (int):
     When using the BSplineTransform, the final spacing of the grid.
     This controls the smoothness of the final deformation.
@@ -104,13 +103,13 @@ most common parameters:
     This is an important parameter! (default 500).
 
 
-### get_elastix_exes()
+### `get_elastix_exes()`
 
 Get the executables for elastix and transformix. Raises an error
 if they cannot be found.
 
 
-### get_tempdir()
+### `get_tempdir()`
 
 Get the temporary directory where pyelastix stores its temporary
 files. The directory is specific to the current process and the
@@ -119,7 +118,7 @@ are automatically cleaned up. Though Elastix log files are also
 written here.
 
 
-### register(im1, im2, params, exact_params=False, verbose=1)
+### `register(im1, im2, params, exact_params=False, verbose=1)`
 
 Perform the registration of `im1` to `im2`, using the given 
 parameters. Returns `(im1_deformed, field)`, where `field` is a
