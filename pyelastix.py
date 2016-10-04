@@ -8,7 +8,7 @@ Python wrapper for the Elastix nonrigid registratuon toolkit.
 Introduction
 ------------
 
-Wraps the Elastix registration toolkit. The elastix command line
+Wraps the Elastix registration toolkit. The Elastix command line
 application needs to be installed on your computer. You can obtain
 a copy at [http://elastix.isi.uu.nl/].
 
@@ -21,7 +21,7 @@ framework.
 Elastix executables
 -------------------
 
-On initialization, this module tries to detect the elastix and 
+On initialization, this module tries to detect the Elastix and 
 transformix executables on your computer. If this fails, it will
 simply use the executable names, which will work if these are on
 your PATH. 
@@ -407,8 +407,6 @@ DTYPE_NP2ITK, DTYPE_ITK2NP = _get_dtype_maps()
 
 
 class Progress:
-    """ To show progress during the registration.
-    """
     
     def __init__(self):
         self._level = 0
@@ -450,71 +448,34 @@ class Progress:
 def register(im1, im2, params, exact_params=False, verbose=1):
     """ register(im1, im2, params, exact_params=False, verbose=1)
     
-    Perform the registration of im1 to im2, using the given 
-    dictionary of parameters.
+    Perform the registration of `im1` to `im2`, using the given 
+    parameters. Returns `(im1_deformed, field)`, where `field` is a
+    tuple with arrays describing the deformation for each dimension
+    (x-y-z order, in world units).
     
-    Returns (im1_deformed, field), where field is a tuple with arrays
-    describing the deformation for each dimension (x-y-z order, in 
-    world units).
+    Parameters:
     
-    
-    Parameters
-    ----------
-    im1 : ndarray or file location
-        The moving image (the one to deform)
-    im2 : ndarray or file location
-        The static (reference) image
-    params : dict or instance_returned by get*params()
+    * im1 (ndarray or file location):
+        The moving image (the one to deform).
+    * im2 (ndarray or file location):
+        The static (reference) image.
+    * params (dict or Parameters):
         The parameters of the registration. Default parameters can be
-        obtained using the get_default_params() method. Note that any
-        parameter known to elastix can be added to the returned 
-        parameter structure, which enables tuning the registration in 
-        great detail. See below for a description on some common 
-        parameters.
-    exact_params : bool
-        If True, use the exact given parameters. If False (default) will
-        process the parameters, checking for incompatible parameters,
-        extending values to lists if a value needs to be given for each
-        dimension.
-    verbose : int
-        Verbose level. If 0, will not print any progress. If 1, will
+        obtained using the `get_default_params()` method. Note that any
+        parameter known to Elastix can be added to the parameter
+        struct, which enables tuning the registration in great detail.
+        See `get_default_params()` and the Elastix docs for more info.
+    * exact_params (bool):
+        If True, use the exact given parameters. If False (default)
+        will process the parameters, checking for incompatible
+        parameters, extending values to lists if a value needs to be
+        given for each dimension.
+    * verbose (int):
+        Verbosity level. If 0, will not print any progress. If 1, will
         print the progress only. If 2, will print the full output
-        produced by the elastix executable. Note that error messages
-        produced by elastix will be printed regardless of the verbose 
+        produced by the Elastix executable. Note that error messages
+        produced by Elastix will be printed regardless of the verbose
         level.
-    
-    
-    Registration parameters 
-    -----------------------
-    This lists some of the default parameters, for more details
-    we refer to the elastix manual.
-    
-    Transform : {'BSplineTransform', 'EulerTransform', 'AffineTransform'}
-        The transformation to apply. Chosen by the argument of 
-        get_default_params.
-    FinalGridSpacingInPhysicalUnits : int
-        When using the BSplineTransform, the final spacing of the grid.
-        This controls the smoothness of the final deformation.
-    AutomaticScalesEstimation : bool
-        When using a rigid or affine transform. Scales the affine matrix
-        elements compared to the translations, to make sure they are in
-        the same range. In general, it's best to use automatic scales
-        estimation.
-    AutomaticTransformInitialization : bool
-        When using a rigid or affine transform. Automatically guess an
-        initial translation by aligning the geometric centers of the 
-        fixed and moving.
-    NumberOfResolutions : int
-        Most registration algorithms adopt a multiresolution approach
-        to direct the solution towards a global optimum and to speed
-        up the process. This parameter specifies the number of scales
-        to apply the registration at. (default 4)
-    MaximumNumberOfIterations  : int
-        Maximum number of iterations in each resolution level.
-        200-2000 works usually fine for nonrigid registration.
-        The more, the better, but the longer computation time.
-        This is an important parameter! (default 500)
-    
     """
     
     # Clear dir
@@ -625,6 +586,9 @@ def register(im1, im2, params, exact_params=False, verbose=1):
         elif field.ndim == 5:
             field = [field[:,:,:,:,d] for d in range(4)]
         fields[i] = tuple(field)
+    
+    if im2 is not None:
+        fields = fields[0]  # For pairwise reg, return 1 field, not a list
     
     # Clean and return
     _clear_temp_dir()
@@ -768,6 +732,7 @@ def _read_image_data( mhd_file):
     return a
 
 class Image(np.ndarray):
+    
     def __new__(cls, array):
         try:
             ob = array.view(cls)
@@ -780,12 +745,13 @@ class Image(np.ndarray):
 # %% Code related to parameters
 
 class Parameters:
-    """ Parameters()
+    """ Struct object to represent the parameters for the Elastix
+    registration toolkit. Sets of parameters can be combined by
+    addition. (When adding `p1 + p2`, any parameters present in both
+    objects will take the value that the parameter has in `p2`.)
     
-    To represent the parameters for the elastix registration toolkit.
-    Sets of parameters can be combined by addition. (When adding "p1+p2",
-    any parameters present in both objects will take the value that the
-    parameter has in p2.)
+    Use `get_default_params()` to get a Parameters struct with sensible
+    default values.
     """
     
     def as_dict(self):
@@ -850,7 +816,8 @@ def _get_fixed_params(im):
 
 
 def get_advanced_params():
-    """ Get struct with parameters that most users do not want to think about.
+    """ Get `Parameters` struct with parameters that most users do not
+    want to think about.
     """
     
     p = Parameters()
@@ -895,9 +862,42 @@ def get_advanced_params():
 
 
 def get_default_params(type='BSPLINE'):
-    """ Get struct with parameters that users may want to tweak.
-    The given ``type`` specifies the type of allowed transform, and can be
-    'RIGID', 'AFFINE', 'BSPLINE'.
+    """ get_default_params(type='BSPLINE')
+    
+    Get `Parameters` struct with parameters that users may want to tweak.
+    The given `type` specifies the type of allowed transform, and can
+    be 'RIGID', 'AFFINE', 'BSPLINE'.
+    
+    For detail on what parameters are available and how they should be used,
+    we refer to the Elastix documentation. Here is a description of the
+    most common parameters:
+    
+    * Transform (str):
+        {'BSplineTransform', 'EulerTransform', 'AffineTransform'} The
+        transformation to apply. Chosen by the argument of
+        get_default_params.
+    * FinalGridSpacingInPhysicalUnits (int):
+        When using the BSplineTransform, the final spacing of the grid.
+        This controls the smoothness of the final deformation.
+    * AutomaticScalesEstimation (bool):
+        When using a rigid or affine transform. Scales the affine matrix
+        elements compared to the translations, to make sure they are in
+        the same range. In general, it's best to use automatic scales
+        estimation.
+    * AutomaticTransformInitialization (bool):
+        When using a rigid or affine transform. Automatically guess an
+        initial translation by aligning the geometric centers of the 
+        fixed and moving.
+    * NumberOfResolutions (int):
+        Most registration algorithms adopt a multiresolution approach
+        to direct the solution towards a global optimum and to speed
+        up the process. This parameter specifies the number of scales
+        to apply the registration at. (default 4)
+    * MaximumNumberOfIterations (int):
+        Maximum number of iterations in each resolution level.
+        200-2000 works usually fine for nonrigid registration.
+        The more, the better, but the longer computation time.
+        This is an important parameter! (default 500).
     """
     
     # Init

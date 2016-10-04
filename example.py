@@ -23,8 +23,7 @@ params.NumberOfResolutions = 3
 print(params)
 
 # Register!
-im3, fields = pyelastix.register(im1, im2, params)
-field = fields[0]  # There is one field with pairwise registration.
+im3, field = pyelastix.register(im1, im2, params)
 
 # Visualize the result
 fig = plt.figure(1);
