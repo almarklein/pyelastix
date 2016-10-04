@@ -122,8 +122,6 @@ def _find_executables(name):
     """ Try to find an executable.
     """
     exe_name = name + '.exe' * sys.platform.startswith('win')
-    exe_path = None
-    exe_version = None
     env_path = os.environ.get(name.upper()+ '_PATH', '')
     
     possible_locations = []
@@ -233,9 +231,12 @@ def _clear_dir(dirName):
         pass
 
 
-def _find_tempdir():
-    """ Establishes the directory to store temporary files. This also
-    cleans up any elastix tempdirs of processes that no longer exist.
+def get_tempdir():
+    """ Get the temporary directory where pyelastix stores its temporary
+    files. The directory is specific to the current process and the
+    calling thread. Generally, the user does not need this; directories
+    are automatically cleaned up. Though Elastix log files are also
+    written here.
     """
     tempdir = os.path.join(tempfile.gettempdir(), 'pyelastix')
     
@@ -269,7 +270,7 @@ def _find_tempdir():
 def _clear_temp_dir():
     """ Clear the temporary directory.
     """
-    tempdir = _find_tempdir()
+    tempdir = get_tempdir()
     for fname in os.listdir(tempdir):
         try:
             os.remove( os.path.join(tempdir, fname) )
@@ -517,7 +518,7 @@ def register(im1, im2, params, exact_params=False, verbose=1):
     """
     
     # Clear dir
-    tempdir = _find_tempdir()
+    tempdir = get_tempdir()
     _clear_temp_dir()
     
     # Reference image
@@ -653,7 +654,7 @@ def _write_image_data(im, id):
     text = '\n'.join(lines)
     
     # Determine file names
-    tempdir = _find_tempdir()
+    tempdir = get_tempdir()
     fname_raw_ = 'im%i.raw' % id
     fname_raw = os.path.join(tempdir, fname_raw_)
     fname_mhd = os.path.join(tempdir, 'im%i.mhd' % id)
@@ -711,7 +712,7 @@ def _write_image_data(im, id):
 def _read_image_data( mhd_file):
     """ Read the resulting image data and return it as a numpy array.
     """
-    tempdir = _find_tempdir()
+    tempdir = get_tempdir()
     
     # Load description from mhd file
     fname = tempdir + '/' + mhd_file
@@ -1013,7 +1014,7 @@ def _write_parameter_file(params):
     """
     
     # Get path
-    path = os.path.join(_find_tempdir(), 'params.txt')
+    path = os.path.join(get_tempdir(), 'params.txt')
     
     # Define helper function
     def valToStr(val):
@@ -1052,4 +1053,3 @@ def _write_parameter_file(params):
     
     # Done
     return path
-
