@@ -8,9 +8,13 @@ This Python module wraps the Elastix registration toolkit. For it to
 work, the Elastix command line application needs to be installed on
 your computer. You can obtain a copy at http://elastix.isi.uu.nl/.
 Further, this module depends on numpy.
+
+https://github.com/almarklein/pyelastix
 """
 
 from __future__ import print_function, division 
+
+__version__ = '1.1'
 
 import os
 import re
