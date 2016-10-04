@@ -1,29 +1,21 @@
-""" Steps to do a new release:
+""" PyElastix setup script
+
+Steps to do a new release:
 
 Preparations:
   * Test on Windows, Linux, Mac
-  * Test on a machine with OpenGl v1.1 (e.g. winXP virtual machine)
   * Make release notes
-  * Update API documentation and other docs that need updating.
+  * Update API documentation and other docs that need updating
 
-Test installation:
-  * clear the build and dist dir (if they exist)
-  * python setup.py register -r http://testpypi.python.org/pypi
-  * python setup.py sdist upload -r http://testpypi.python.org/pypi 
-  * pip install -i http://testpypi.python.org/pypi
-
-Define the version:
-  * update __version__ in __init__.py
+Bump the version:
+  * update __version__
   * Tag the tip changeset as version x.x
 
-Generate and upload package (preferably on Windows)
+Register and upload package
   * python setup.py register
   * python setup.py sdist upload
+  * update conda-forge feedstock
 
-Announcing:
-  * It can be worth waiting a day for eager users to report critical bugs
-  * Announce in scipy-user, visvis mailing list, G+
-  
 """
 
 import os
