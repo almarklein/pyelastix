@@ -149,4 +149,8 @@ Parameters:
     produced by Elastix will be printed regardless of the verbose
     level.
 
+If `im1` is a list of images, performs a groupwise registration.
+In this case the resulting `field` is a list of fields, each
+indicating the deformation to the "average" image.
+
 

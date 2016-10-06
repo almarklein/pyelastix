@@ -431,6 +431,10 @@ def register(im1, im2, params, exact_params=False, verbose=1):
         produced by the Elastix executable. Note that error messages
         produced by Elastix will be printed regardless of the verbose
         level.
+    
+    If `im1` is a list of images, performs a groupwise registration.
+    In this case the resulting `field` is a list of fields, each
+    indicating the deformation to the "average" image.
     """
     
     # Clear dir
