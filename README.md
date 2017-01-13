@@ -5,6 +5,9 @@ registration toolkit, which is a powerful tool, suitable for 2D and 3D
 images, capable of rigid as well as non-rigid (i.e. elastic) image
 registration.
 
+For an overview of other image registration projects in Python,
+see http://pyimreg.github.io.
+
 
 ## Installation
 
