@@ -22,6 +22,7 @@ import ctypes
 import tempfile
 import threading
 import subprocess
+import warnings
 
 import numpy as np
 
@@ -116,10 +117,19 @@ def _find_executables(name):
     def do_check_version(exe):
         try:
             return subprocess.check_output([exe, '--version']).decode().strip()
-        except Exception:
-            # print('not a good exe', exe)
+        except subprocess.CalledProcessError as e:
+            print(e.output)
             return False
-    
+        except PermissionError:
+            # Cannot execute the file
+            return False
+        except OSError:
+            # File does not exist
+            return False
+        except subprocess.TimeoutExpired:
+            # Timeout
+            return False
+
     # If env path is the exe itself ...
     if os.path.isfile(env_path):
         ver = do_check_version(env_path)
@@ -148,7 +158,6 @@ def _find_executables(name):
                     ver = do_check_version(exe)
                     if ver:
                         return exe, ver
-    
     return None, None
 
 
@@ -579,7 +588,7 @@ def _write_image_data(im, id):
     The id is the image sequence number (1 or 2). Returns the path of
     the mhd file.
     """
-    im = im * (1.0/3000)
+    im = im * (1.0/3000)  # TODO: WTF is this?
     # Create text
     lines = [
         "ObjectType = Image",
