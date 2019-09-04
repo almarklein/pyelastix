@@ -588,7 +588,7 @@ def _write_image_data(im, id):
     The id is the image sequence number (1 or 2). Returns the path of
     the mhd file.
     """
-    im = im * (1.0/3000)  # TODO: WTF is this?
+    # im = im * (1.0/3000)  # TODO: WTF is this?
     # Create text
     lines = [
         "ObjectType = Image",
