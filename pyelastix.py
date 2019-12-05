@@ -12,7 +12,7 @@ Further, this module depends on numpy.
 https://github.com/almarklein/pyelastix
 """
 
-__version__ = '1.1'
+__version__ = '1.2'
 
 import os
 import re
