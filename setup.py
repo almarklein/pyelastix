@@ -42,24 +42,24 @@ for line in open(initFile).readlines():
         __doc__ += line
 
 
+
 setup(
     name = name,
     version = __version__,
     author = 'Almar Klein',
     author_email = 'almar.klein@gmail.com',
     license = 'MIT',
-    
-    url = 'https://github.com/almarklein/pyelastix',   
-    keywords = "image registration deformation nonrigid elastic elastix",
+
+    url = 'https://github.com/almarklein/pyelastix',
+    keywords = "image registration, deformation, nonrigid, elastic, elastix",
     description = description,
     long_description = __doc__,
-    
+
     platforms = 'any',
     provides = ['pyelastix'],
-    
+
     py_modules = ['pyelastix'],
-    package_dir = {'visvis': '.'},
-    
+
     classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Science/Research',
