@@ -1,36 +1,81 @@
-# Python package
-# Create and test a Python package on multiple Python versions.
-# Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/python
+# Azure Pipelines CI configuration file
+# More information: https://docs.microsoft.com/azure/devops/pipelines/languages/python
 
-trigger:
-- master
+jobs:
+- job: 'Default'
+  strategy:
+    matrix:
+      linux-python35:
+        imageName: 'ubuntu-16.04'
+        python.version: '3.6'
+      linux-python37:
+        imageName: 'ubuntu-16.04'
+        python.version: '3.7'
+      windows-python35:
+        imageName: 'vs2017-win2016'
+        python.version: '3.6'
+      windows-python37:
+        imageName: 'vs2017-win2016'
+        python.version: '3.7'
+  pool:
+    vmImage: $(imageName)
+  continueOnError: false
 
-pool:
-  vmImage: 'ubuntu-latest'
-strategy:
-  matrix:
-    Python27:
-      python.version: '2.7'
-    Python35:
-      python.version: '3.5'
-    Python36:
-      python.version: '3.6'
-    Python37:
-      python.version: '3.7'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+    displayName: 'Use Python $(python.version)'
 
-steps:
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '$(python.version)'
-  displayName: 'Use Python $(python.version)'
+  - task: DownloadGitHubRelease@0
+    inputs:
+      connection: github-read
+      userRepository: SuperElastix/elastix
+      defaultVersionType: 'specificTag'  # one of: latest, specificVersion, specificTag
+      version: '4.9.0'
+      itemPattern: 'elastix-*'  # filter assets
+      downloadPath: '$(Build.StagingDirectory)'
+    displayName: 'Download elastix'
 
-- script: |
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt
-  displayName: 'Install dependencies'
+  - task: ExtractFiles@1
+    inputs:
+      archiveFilePatterns: '$(Build.StagingDirectory)/*.zip'
+      destinationFolder: '$(Build.StagingDirectory)'
+      cleanDestinationFolder: false
+    condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+    displayName: 'Extract elastix'
 
-- script: |
-    pip install pytest pytest-azurepipelines
-    pytest
-  displayName: 'pytest'
+  - task: ExtractFiles@1
+    inputs:
+      archiveFilePatterns: '$(Build.StagingDirectory)/*.tar.bz2'
+      destinationFolder: '$(Build.StagingDirectory)'
+      cleanDestinationFolder: false
+    condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'))
+    displayName: 'Extract elastix'
+
+  - bash: |
+      set -x
+
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+
+      pip install .
+    displayName: 'Install package'
+
+  - bash: |
+      set -x
+
+      case ${AGENT_OS} in
+        'Linux')
+          export ELASTIX_PATH=${BUILD_STAGINGDIRECTORY}/bin
+          export LD_LIBRARY_PATH=${BUILD_STAGINGDIRECTORY}/lib:${LD_LIBRARY_PATH}
+          ;;
+        'Windows_NT')
+          export ELASTIX_PATH=${BUILD_STAGINGDIRECTORY}
+          ;;
+        *) ;;
+      esac
+
+      pip install -r requirements_test.txt
+      pytest .
+    displayName: 'Test package'

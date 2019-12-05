@@ -12,8 +12,6 @@ Further, this module depends on numpy.
 https://github.com/almarklein/pyelastix
 """
 
-from __future__ import print_function, division 
-
 __version__ = '1.1'
 
 import os
@@ -24,6 +22,7 @@ import ctypes
 import tempfile
 import threading
 import subprocess
+import warnings
 
 import numpy as np
 
@@ -34,7 +33,8 @@ import numpy as np
 # GetExitCodeProcess uses a special exit code to indicate that the process is
 # still running.
 _STILL_ACTIVE = 259
- 
+
+
 def _is_pid_running(pid):
     """Get whether a process with the given pid is currently running.
     """
@@ -42,14 +42,16 @@ def _is_pid_running(pid):
         return _is_pid_running_on_windows(pid)
     else:
         return _is_pid_running_on_unix(pid)
- 
+
+
 def _is_pid_running_on_unix(pid):
     try:
         os.kill(pid, 0)
     except OSError:
         return False
     return True
- 
+
+
 def _is_pid_running_on_windows(pid):
     import ctypes.wintypes
  
@@ -70,44 +72,64 @@ def _is_pid_running_on_windows(pid):
     return is_running or exit_code.value == _STILL_ACTIVE
 
 
-# %% Code for detecting the executablews
+# %% Code for detecting the executables
 
 
 def _find_executables(name):
     """ Try to find an executable.
     """
     exe_name = name + '.exe' * sys.platform.startswith('win')
-    env_path = os.environ.get(name.upper()+ '_PATH', '')
+    env_path = os.environ.get(name.upper() + '_PATH', '')
     
     possible_locations = []
-    def add(*dirs):
+
+    def add_locations(*dirs):
         for d in dirs:
-            if d and d not in possible_locations and os.path.isdir(d):
+            is_valid = (d is not None and
+                        os.path.isdir(d) and
+                        os.path.exists(d) and
+                        d not in possible_locations)
+            if is_valid:
                 possible_locations.append(d)
-    
+
     # Get list of possible locations
-    add(env_path)
+    add_locations(env_path)
     try:
-        add(os.path.dirname(os.path.abspath(__file__)))
+        add_locations(os.path.dirname(os.path.abspath(__file__)))
     except NameError:  # __file__ may not exist
         pass
-    add(os.path.dirname(sys.executable))
-    add(os.path.expanduser('~'))
+    add_locations(os.path.dirname(sys.executable))
+    add_locations(os.path.expanduser('~'))
     
     # Platform specific possible locations
     if sys.platform.startswith('win'):
-        add('c:\\program files', os.environ.get('PROGRAMFILES'),
-            'c:\\program files (x86)', os.environ.get('PROGRAMFILES(x86)'))
+        add_locations(
+            'c:\\program files',
+            os.environ.get('PROGRAMFILES'),
+            'c:\\program files (x86)',
+            os.environ.get('PROGRAMFILES(x86)'))
     else:
-        possible_locations.extend(['/usr/bin','/usr/local/bin','/opt/local/bin'])
-    
+        add_locations(
+            '/usr/bin',
+            '/usr/local/bin',
+            '/opt/local/bin')
+
     def do_check_version(exe):
         try:
             return subprocess.check_output([exe, '--version']).decode().strip()
-        except Exception:
-            # print('not a good exe', exe)
+        except subprocess.CalledProcessError as e:
+            print(e.output)
             return False
-    
+        except PermissionError:
+            # Cannot execute the file
+            return False
+        except OSError:
+            # File does not exist
+            return False
+        except subprocess.TimeoutExpired:
+            # Timeout
+            return False
+
     # If env path is the exe itself ...
     if os.path.isfile(env_path):
         ver = do_check_version(env_path)
@@ -136,11 +158,11 @@ def _find_executables(name):
                     ver = do_check_version(exe)
                     if ver:
                         return exe, ver
-    
     return None, None
 
 
 EXES = []
+
 
 def get_elastix_exes():
     """ Get the executables for elastix and transformix. Raises an error
@@ -166,7 +188,7 @@ def get_elastix_exes():
                            'Elastix from http://elastix.isi.uu.nl/. Pyelastix '
                            'looks for the exe in a series of common locations. '
                            'Set ELASTIX_PATH if necessary.')
-    
+
 
 # %% Code for maintaing the temp dirs
 
@@ -177,7 +199,7 @@ def _clear_dir(dirName):
     # If we got here, clear dir  
     for fname in os.listdir(dirName):
         try:
-            os.remove( os.path.join(dirName, fname) )
+            os.remove(os.path.join(dirName, fname))
         except Exception:
             pass
     try:
@@ -203,7 +225,7 @@ def get_tempdir():
     for fname in os.listdir(tempdir):
         dirName = os.path.join(tempdir, fname)
         # Check if is right kind of dir
-        if not (os.path.isdir(dirName) and  fname.startswith('id_')):
+        if not (os.path.isdir(dirName) and fname.startswith('id_')):
             continue
         # Get pid and check if its running
         try:
@@ -214,8 +236,10 @@ def get_tempdir():
             _clear_dir(dirName)
     
     # Select dir that included process and thread id
-    tid = id(threading.current_thread() if hasattr(threading, 'current_thread')
-                                        else threading.currentThread())
+    if hasattr(threading, 'current_thread'):
+        tid = id(threading.current_thread())
+    else:
+        tid = id(threading.currentThread())
     dir = os.path.join(tempdir, 'id_%i_%i' % (os.getpid(), tid))
     if not os.path.isdir(dir):
         os.mkdir(dir)
@@ -282,6 +306,7 @@ def _system3(cmd, verbose=False):
         progress = Progress()
     
     stdout = []
+
     def poll_process(p):
         while not interrupted:
             msg = p.stdout.readline().decode()
@@ -301,8 +326,9 @@ def _system3(cmd, verbose=False):
         #print("thread exit")
     
     # Start process that runs the command
-    p = subprocess.Popen(cmd, shell=True, 
-                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    p = subprocess.Popen(cmd,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.STDOUT)
     
     # Keep reading stdout from it
     # thread.start_new_thread(poll_process, (p,))  Python 2.x
@@ -319,7 +345,7 @@ def _system3(cmd, verbose=False):
         interrupted = True
         # Kill subprocess
         pid = p.pid
-        if hasattr(os,'kill'):
+        if hasattr(os, 'kill'):
             import signal
             os.kill(pid, signal.SIGKILL)
         elif sys.platform.startswith('win'):
@@ -343,11 +369,11 @@ def _get_dtype_maps():
     """
     
     # Define pairs
-    tmp = [ (np.float32, 'MET_FLOAT'),  (np.float64, 'MET_DOUBLE'),
-            (np.uint8, 'MET_UCHAR'),    (np.int8, 'MET_CHAR'),
-            (np.uint16, 'MET_USHORT'),  (np.int16, 'MET_SHORT'),
-            (np.uint32, 'MET_UINT'),    (np.int32, 'MET_INT'),
-            (np.uint64, 'MET_ULONG'),   (np.int64, 'MET_LONG') ]
+    tmp = [(np.float32, 'MET_FLOAT'), (np.float64, 'MET_DOUBLE'),
+           (np.uint8, 'MET_UCHAR'), (np.int8, 'MET_CHAR'),
+           (np.uint16, 'MET_USHORT'), (np.int16, 'MET_SHORT'),
+           (np.uint32, 'MET_UINT'), (np.int32, 'MET_INT'),
+           (np.uint64, 'MET_ULONG'), (np.int64, 'MET_LONG')]
     
     # Create dictionaries
     map1, map2 = {}, {}
@@ -357,6 +383,7 @@ def _get_dtype_maps():
     
     # Done
     return map1, map2
+
 
 DTYPE_NP2ITK, DTYPE_ITK2NP = _get_dtype_maps()
 
@@ -370,10 +397,10 @@ class Progress:
     def update(self, s):
         # Detect resolution
         if s.startswith('Resolution:'):
-            self._level = self.get_int( s.split(':')[1] )
+            self._level = self.get_int(s.split(':')[1])
         # Check if nr
         if '\t' in s:
-            iter = self.get_int( s.split('\t',1)[0] )
+            iter = self.get_int(s.split('\t', 1)[0])
             if iter:
                 self.show_progress(iter)
     
@@ -496,11 +523,12 @@ def register(im1, im2, params, exact_params=False, verbose=1):
     
     # Register
     if True:
-        
         # Compile command to execute
         command = [get_elastix_exes()[0],
-                   '-m', path_im1, '-f', path_im2, 
-                   '-out', tempdir, '-p', path_params]
+                   '-m', path_im1,
+                   '-f', path_im2,
+                   '-out', tempdir,
+                   '-p', path_params]
         if verbose:
             print("Calling Elastix to register images ...")
         _system3(command, verbose)
@@ -514,10 +542,11 @@ def register(im1, im2, params, exact_params=False, verbose=1):
     
     # Find deformation field
     if True:
-        
         # Compile command to execute
         command = [get_elastix_exes()[1],
-                   '-def', 'all', '-out', tempdir, '-tp', path_trafo_params]
+                   '-def', 'all',
+                   '-out', tempdir,
+                   '-tp', path_trafo_params]
         _system3(command, verbose)
         
         # Try and load result
@@ -537,13 +566,13 @@ def register(im1, im2, params, exact_params=False, verbose=1):
     for i in range(len(fields)):
         field = fields[i]
         if field.ndim == 2:
-            field = [field[:,d] for d in range(1)]
+            field = [field[:, d] for d in range(1)]
         elif field.ndim == 3:
-            field = [field[:,:,d] for d in range(2)]
+            field = [field[:, :, d] for d in range(2)]
         elif field.ndim == 4:
-            field = [field[:,:,:,d] for d in range(3)]
+            field = [field[:, :, :, d] for d in range(3)]
         elif field.ndim == 5:
-            field = [field[:,:,:,:,d] for d in range(4)]
+            field = [field[:, :, :, :, d] for d in range(4)]
         fields[i] = tuple(field)
     
     if im2 is not None:
@@ -559,21 +588,23 @@ def _write_image_data(im, id):
     The id is the image sequence number (1 or 2). Returns the path of
     the mhd file.
     """
-    im = im* (1.0/3000)
+    # im = im * (1.0/3000)  # TODO: WTF is this?
     # Create text
-    lines = [   "ObjectType = Image",
-                "NDims = <ndim>",
-                "BinaryData = True",
-                "BinaryDataByteOrderMSB = False",
-                "CompressedData = False",
-                #"TransformMatrix = <transmatrix>",
-                "Offset = <origin>",
-                "CenterOfRotation = <centrot>",
-                "ElementSpacing = <sampling>",
-                "DimSize = <shape>",
-                "ElementType = <dtype>",
-                "ElementDataFile = <fname>",
-                "" ]
+    lines = [
+        "ObjectType = Image",
+        "NDims = <ndim>",
+        "BinaryData = True",
+        "BinaryDataByteOrderMSB = False",
+        "CompressedData = False",
+        #"TransformMatrix = <transmatrix>",
+        "Offset = <origin>",
+        "CenterOfRotation = <centrot>",
+        "ElementSpacing = <sampling>",
+        "DimSize = <shape>",
+        "ElementType = <dtype>",
+        "ElementDataFile = <fname>",
+        ""
+    ]
     text = '\n'.join(lines)
     
     # Determine file names
@@ -584,10 +615,14 @@ def _write_image_data(im, id):
     
     # Get shape, sampling and origin
     shape = im.shape
-    if hasattr(im, 'sampling'): sampling = im.sampling
-    else: sampling = [1 for s in im.shape]
-    if hasattr(im, 'origin'): origin = im.origin
-    else: origin = [0 for s in im.shape]
+    if hasattr(im, 'sampling'):
+        sampling = im.sampling
+    else:
+        sampling = [1 for _ in im.shape]
+    if hasattr(im, 'origin'):
+        origin = im.origin
+    else:
+        origin = [0 for _ in im.shape]
     
     # Make all shape stuff in x-y-z order and make it string
     shape = ' '.join([str(s) for s in reversed(shape)])
@@ -607,12 +642,12 @@ def _write_image_data(im, id):
     text = text.replace('<origin>', origin)
     text = text.replace('<dtype>', dtype_itk)
     text = text.replace('<centrot>', ' '.join(['0' for s in im.shape]))
-    if im.ndim==2:
+    if im.ndim == 2:
         text = text.replace('<transmatrix>', '1 0 0 1')
-    elif im.ndim==3:
+    elif im.ndim == 3:
         text = text.replace('<transmatrix>', '1 0 0 0 1 0 0 0 1')
-    elif im.ndim==4:
-        pass # ???
+    elif im.ndim == 4:
+        pass  # TODO: ???
     
     # Write data file
     f = open(fname_raw, 'wb')
@@ -632,7 +667,7 @@ def _write_image_data(im, id):
     return fname_mhd
 
 
-def _read_image_data( mhd_file):
+def _read_image_data(mhd_file):
     """ Read the resulting image data and return it as a numpy array.
     """
     tempdir = get_tempdir()
@@ -674,7 +709,7 @@ def _read_image_data( mhd_file):
     # Take vectors/colours into account
     N = np.prod(shape)
     if N != a.size:
-        extraDim = int( a.size / N )
+        extraDim = int(a.size / N)
         shape = tuple(shape) + (extraDim,)
         sampling = tuple(sampling) + (1.0,)
         origin = tuple(origin) + (0,)
@@ -690,6 +725,7 @@ def _read_image_data( mhd_file):
         a.origin = origin
     return a
 
+
 class Image(np.ndarray):
     
     def __new__(cls, array):
@@ -702,6 +738,7 @@ class Image(np.ndarray):
 
 
 # %% Code related to parameters
+
 
 class Parameters:
     """ Struct object to represent the parameters for the Elastix
@@ -861,8 +898,7 @@ def get_default_params(type='BSPLINE'):
     # Init
     p = Parameters()
     type = type.upper()
-    
-    
+
     # ===== Metric to use =====
     p.Metric = 'AdvancedMattesMutualInformation'
     
@@ -875,8 +911,7 @@ def get_default_params(type='BSPLINE'):
     p.ImageSampler = 'RandomCoordinate'
     p.NumberOfSpatialSamples = 2048
     p.NewSamplesEveryIteration = True
-    
-    
+
     # ====== Transform to use ======
     
     # The number of levels in the image pyramid
@@ -906,8 +941,7 @@ def get_default_params(type='BSPLINE'):
         # Automatically guess an initial translation by aligning the
         # geometric centers of the fixed and moving.
         p.AutomaticTransformInitialization = True
-    
-    
+
     # ===== Optimizer to use =====
     p.Optimizer = 'AdaptiveStochasticGradientDescent'
     
@@ -925,16 +959,14 @@ def get_default_params(type='BSPLINE'):
     
     # Another optional parameter for the AdaptiveStochasticGradientDescent
     #p.SigmoidInitialTime = 4.0
-    
-    
+
     # ===== Also interesting parameters =====
     
     #p.FinalGridSpacingInVoxels = 16
     #p.GridSpacingSchedule = [4.0, 4.0, 2.0, 1.0]
     #p.ImagePyramidSchedule = [8 8  4 4  2 2  1 1]
     #p.ErodeMask = "false"
-    
-    # Done
+
     return p
 
 
@@ -953,8 +985,9 @@ def _compile_params(params, im1):
     # Check parameter dimensions
     if isinstance(im1, np.ndarray):
         lt = (list, tuple)
-        for key in [    'FinalGridSpacingInPhysicalUnits',
-                        'FinalGridSpacingInVoxels' ]:
+        keys = ['FinalGridSpacingInPhysicalUnits',
+                'FinalGridSpacingInVoxels']
+        for key in keys:
             if key in params.keys() and not isinstance(params[key], lt):
                 params[key] = [params[key]] * im1.ndim
     
@@ -982,7 +1015,7 @@ def _write_parameter_file(params):
             return str(val)
         elif isinstance(val, float):
             tmp = str(val)
-            if not '.' in tmp:
+            if '.' not in tmp:
                 tmp += '.0'
             return tmp
         elif isinstance(val, str):

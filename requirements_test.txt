@@ -1,0 +1,4 @@
+pytest
+cython
+scipy
+scikit-image>=0.15.0
