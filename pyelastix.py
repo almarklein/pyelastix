@@ -653,6 +653,8 @@ def _write_image_data(im, id):
     f = open(fname_raw, 'wb')
     try:
         f.write(im.data)
+    except:
+        f.write(np.ascontiguousarray(im.data))
     finally:
         f.close()
     
